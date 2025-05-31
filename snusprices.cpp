@@ -48,8 +48,8 @@ std::wstring toLower(const std::wstring& str) {
 // Structure to represent a product in the Alko database
 struct SnusItem {
     int id; // Product ID
-    std::wstring merkki; // Product name
-    std::wstring malli; // Manufacturer
+    std::wstring tuotenimi; // Product name
+    std::wstring maku; // Manufacturer
     std::wstring vahvuus; // Bottle size
     std::wstring hinta; // Price
 };
@@ -79,9 +79,9 @@ void loadDatabase(const std::string filename, std::vector<SnusItem> &database) {
         std::getline(ss, token, L',');
         item.id = std::stoi(token);
         std::getline(ss, token, L',');
-        item.merkki = token;
+        item.tuotenimi = token;
         std::getline(ss, token, L',');
-        item.malli = token;
+        item.maku = token;
         std::getline(ss, token, L',');
         item.vahvuus = token;
         std::getline(ss, token, L',');
@@ -101,8 +101,8 @@ std::map<std::wstring, std::wstring> strings;
 void setLanguageStrings(const std::wstring& language) {
     if (language == L"fi") {
         strings[L"PRODUCT_ID"] = L"Tuotteen ID: ";
-        strings[L"PRODUCT_BRAND"] = L"Tuotemerkki: ";
-        strings[L"PRODUCT_LABEL"] = L"Malli: ";
+        strings[L"PRODUCT_BRAND"] = L"Tuotenimi: ";
+        strings[L"PRODUCT_FLAVOR"] = L"Maku: ";
 	strings[L"PRODUCT_STRENGTH"] = L"Vahvuus: ";
         strings[L"PRICE"] = L"Hinta: ";
         strings[L"MENU_HEADER"] = L"Valitse toiminto:";
@@ -131,7 +131,7 @@ void setLanguageStrings(const std::wstring& language) {
     } else if (language == L"en") {
         strings[L"PRODUCT_ID"] = L"Product ID: ";
         strings[L"PRODUCT_BRAND"] = L"Brand: ";
-        strings[L"PRODUCT_LABEL"] = L"Label: ";
+        strings[L"PRODUCT_FLAVOR"] = L"Flavor: ";
 	strings[L"PRODUCT_STRENGTH"] = L"Strength: ";
         strings[L"PRICE"] = L"Price: ";
         strings[L"MENU_OPTION_1"] = L"1. Search products by name";
@@ -169,18 +169,18 @@ void searchByName(const std::vector<SnusItem> &database, const std::wstring &nam
     bool found = false;
 
     for (const auto& item : database) {
-        if (toLower(item.merkki).find(toLower(name)) != std::wstring::npos) {
+        if (toLower(item.tuotenimi).find(toLower(name)) != std::wstring::npos) {
             found = true;
             if (singleLine) {
                 std::wcout << strings[L"PRODUCT_ID"] << item.id
-                            << L", " << strings[L"PRODUCT_BRAND"] << item.merkki
-                            << L", " << strings[L"PRODUCT_LABEL"] << item.malli
+                            << L", " << strings[L"PRODUCT_BRAND"] << item.tuotenimi
+                            << L", " << strings[L"PRODUCT_FLAVOR"] << item.maku
                             << L", " << strings[L"PRODUCT_STRENGTH"] << item.vahvuus
                             << L", " << strings[L"PRICE"] << item.hinta << std::endl;
             } else {
                 if (item.id) std::wcout << strings[L"PRODUCT_ID"] << item.id << std::endl;
-                if (!item.merkki.empty()) std::wcout << strings[L"PRODUCT_BRAND"] << item.merkki << std::endl;
-                if (!item.malli.empty()) std::wcout << strings[L"PRODUCT_LABEL"] << item.malli << std::endl;
+                if (!item.tuotenimi.empty()) std::wcout << strings[L"PRODUCT_BRAND"] << item.tuotenimi << std::endl;
+                if (!item.maku.empty()) std::wcout << strings[L"PRODUCT_FLAVOR"] << item.maku << std::endl;
                 if (!item.vahvuus.empty()) std::wcout << strings[L"PRODUCT_STRENGTH"] << item.vahvuus << std::endl;
                 if (!item.hinta.empty()) std::wcout << strings[L"PRICE"] << item.hinta << std::endl;
                 std::wcout << std::endl;
@@ -262,7 +262,7 @@ int main() {
     std::vector<SnusItem> database;
 
 
-    std::wcout << "Please select your market..." << std::endl;
+    std::wcout << "Please don't select k-market, they hate you." << std::endl;
     std::wcout << "1. K-Market" << std::endl;
     std::wcout << "2. Sale" << std::endl;
     std::wcout << "3. Shell" << std::endl;
