@@ -1,42 +1,115 @@
-#include <iostream>
 #include <algorithm>
+#include <iostream>
 #include <fstream>
+#include <sstream>
+#include <codecvt>
 #include <vector>
+#include <string>
+#include <locale>
 #include "snus.h"
 
 struct SnusItem {
 	int id;
-	std::wstring merkki;
-	std::wstring malli;
-	std::wstring vahvuus;
-	std::wstring hinta;
+	std::string merkki;
+	std::string malli;
+	std::string vahvuus;
+	std::string hinta;
 };
 
-void loadDatabase(std::wstring filename, std::vector<SnusItem> database) {
+// Function to trim leading and trailing whitespace from a string
+std::string trim(const std::string& str) {
+    size_t first = str.find_first_not_of(" \t\n\r\f\v");
+    if (first == std::string::npos) return ""; // No non-whitespace characters
+    size_t last = str.find_last_not_of(" \t\n\r\f\v");
+    return str.substr(first, (last - first + 1));
+}
 
-	std::wcout << L"Loading database: " << filename << std::endl;
-	std::wfstream file(filename);
+// Function to trim leading and trailing whitespace from a wstring
+std::wstring trim(const std::wstring& str) {
+    size_t first = str.find_first_not_of(L" \t\n\r\f\v");
+    if (first == std::wstring::npos) return L""; // No non-whitespace characters
+    size_t last = str.find_last_not_of(L" \t\n\r\f\v");
+    return str.substr(first, (last - first + 1));
+}
+
+// Helper function to convert a string to lowercase
+std::string toLower(const std::string& str) {
+    std::string lowerStr = str;
+    std::transform(lowerStr.begin(), lowerStr.end(), lowerStr.begin(), ::tolower);
+    return lowerStr;
+}
+
+// Helper for UTF-8 to wstring conversion
+std::wstring utf8_to_wstring(const std::string& str) {
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> conv;
+    return conv.from_bytes(str);
+}
+
+// Helper function to convert a wstring to lowercase
+std::wstring toLower(const std::wstring& str) {
+    std::wstring lowerStr = str;
+    std::transform(lowerStr.begin(), lowerStr.end(), lowerStr.begin(), ::towlower);
+    return lowerStr;
+}
+
+// Function to search for products by name
+void searchByName(const std::vector<SnusItem> &database, std::string &merkki, bool singleLine) {
+    
+    bool found = false;
+
+    for (const auto& item : database) {
+        if (toLower(item.merkki).find(toLower(merkki)) != std::wstring::npos) {
+            found = true;
+            if (singleLine) {
+                std::cout << "ID:" << item.id
+                            << ", " << "Merkki: " << item.merkki
+                            << ", " << "Malli: " << item.malli
+                            << ", " << "Vahvuus: " << item.vahvuus
+                            << ", " << "Hinta: " << item.hinta;
+            } else {
+                if (item.id) std::cout << "ID: " << item.id << std::endl;
+                if (!item.merkki.empty()) std::cout << "Merkki: " << item.merkki << std::endl;
+                if (!item.malli.empty()) std::cout << "Malli: " << item.malli << std::endl;
+                if (!item.vahvuus.empty()) std::cout << "Vahvuus: " << item.vahvuus << std::endl;
+                if (!item.hinta.empty()) std::cout << "Hinta: " << item.hinta << std::endl;
+                std::cout << std::endl;
+            }
+        }
+    }
+
+    if (!found) {
+        std::cout << L"No products found with the name: " << merkki << std::endl;
+    }
+}
+
+void loadDatabase(std::string filename, std::vector<SnusItem> database) {
+
+	std::cout << "Loading database: " << filename << std::endl;
+	
+	std::fstream file(filename.c_str());
+
+	file.imbue(std::locale(file.getloc(), new std::codecvt_utf8<wchar_t>));
 
 	if (!file.is_open()) {
-		std::wcerr << L"Error: Could not open file " << filename.c_str();
+		std::cerr << "Error: Could not open file: " << filename << std::endl;
 	}
 
-	std::wstring line;
+	std::string line;
 	std::getline(file, line); // Read the header line (first line);
 	while (std::getline(file, line)) {
-		std::wstringstream ss(line);
+		std::stringstream ss(line);
 		SnusItem item;
-		std::wstring token;
+		std::string token;
 
-		std::getline(ss, token, L',');
+		std::getline(ss, token, ',');
 		item.id = std::stoi(token);
-		std::getline(ss, token, L',');
+		std::getline(ss, token, ',');
 		item.merkki = token;
-		std::getline(ss, token, L',');
+		std::getline(ss, token, ',');
 		item.malli = token;
-		std::getline(ss, token, L',');
+		std::getline(ss, token, ',');
 		item.vahvuus = token;
-		std::getline(ss, token, L',');
+		std::getline(ss, token, ',');
 		item.hinta = token;
 		
 		database.push_back(item);
@@ -59,101 +132,46 @@ int main() {
     	std::setlocale(LC_ALL, "");
     	#endif
 
-	std::wcout << "Enter snus database: " << std::endl;
-	
-	std::wstring filename;
-	std::wcin >> filename;
+	std::cout << "Enter snus database: ";
+	std::string dbname;
+	std::cin >> dbname;
 
+	// While searching
 	// Print all databases (e.g kmarket.csv, sale.csv, prisma.csv)
 	// Comment: for now just do one, load "snus.csv"...
 
-	loadDatabase(filename, database);
+	loadDatabase(dbname, database);
 
-	std::wcout << L"Database loaded successfully..." << std::endl;
+	std::cout << "Database loaded successfully..." << std::endl;
 
-	std::wcout << L"Welcome to nicotine pouch prices app!" << std::endl;
+	std::cout << "Welcome to nicotine pouch prices app!" << std::endl;
 	
-	Snus denssi_bf(L"Denssi", L"Brain freeze", L"6,50€", L"16mg/ps");
-	Snus skruf_white(L"Skruf", L"White", L"6,50€", L"10mg/ps");
-	Snus velo_freeze_max(L"VELO", L"Freeze Max", L"6,50€", L"16mg/ps");
-	Snus zonex_cold_blast(L"ZoneX", L"Cold Blast", L"6,50€", L"16mg/ps");
-	Snus greatest_cold_dry(L"Greatest", L"Cold Dry", L"6,50€", L"16mg/ps");
-	Snus lundgrens_rimfrost(L"Lundgrens", L"Rimfrost", L"6,50€", L"10mg/ps");
+	bool searching = true;
 
+	while (searching) {
+		std::string searchterm;
+		std::cout << "Please enter the product name or leave empty to list all products: ";
+		std::cin >> searchterm;
 
-	// todo: Find snus product using nicotine pouches search query
-	
-	std::wcout << "Do you want to list the available products? (yes/no): ";
-	std::wstring answer;
-	std::wcin >> answer;
+		bool singleLine;
 
-	std::wcout << "-----------------------------------------------------" << std::endl;
+		searchByName(database, searchterm, singleLine);
 
-	if (answer == L"yes") {
-		// List all items
-		std::wcout << L"Item 1 | " << denssi_bf.brand 		<< L" " << denssi_bf.label << std::endl;
-		std::wcout << L"Item 2 | " << skruf_white.brand 	<< L" " << skruf_white.label << std::endl;
-		std::wcout << L"Item 3 | " << velo_freeze_max.brand 	<< L" " << velo_freeze_max.label << std::endl;
-		std::wcout << L"Item 4 | " << zonex_cold_blast.brand 	<< L" " << zonex_cold_blast.label << std::endl;
-		std::wcout << L"Item 5 | " << greatest_cold_dry.brand 	<< L" " << greatest_cold_dry.label << std::endl;
-		std::wcout << L"Item 6 | " << lundgrens_rimfrost.brand	<< L" " << lundgrens_rimfrost.label << std::endl;
-	} else if (answer == L"no") {
-		std::wcout << L"Exiting program..." << std::endl;
-		return 0;
-	} else {
-		std::wcout << L"Wrong input, exiting..." << std::endl;
-		return -1;
+		std::cout << "--- 1. Search again / 2. Exit ---" << std::endl;
+		std::cout << "Do you want to search again or exit?: ";
+		
+		int choice;
+		std::cin >> choice;
+
+		if (choice == 1) {
+			// Do nothing
+		} else if (choice == 2) {
+			searching = false;
+		} else {
+			std::cout << "Invalid input" << std::endl;
+		}
 	}
-
-	std::wcout << L"-----------------------------------------------------" << std::endl;
 	
-	// Print product information according to the index
-	std::wcout << "Enter item ID to see the product information: ";
-	int itemSelection;
-	std::wcin >> itemSelection;
-
-	std::wcout << "-----------------------------------------------------" << std::endl;
-
-	switch (itemSelection) {
-		case 1:
-			std::wcout << "Brand: "     << denssi_bf.brand << std::endl;
-			std::wcout << "Label: "     << denssi_bf.label << std::endl;
-			std::wcout << "Price: "     << denssi_bf.price << std::endl;
-			std::wcout << "Strength: "  << denssi_bf.strength << std::endl;
-			break;
-		case 2:
-			std::wcout << "Brand: "     << skruf_white.brand << std::endl;
-			std::wcout << "Label: "     << skruf_white.label << std::endl;
-			std::wcout << "Price: "     << skruf_white.price << std::endl;
-			std::wcout << "Strength: "  << skruf_white.strength << std::endl;
-			break;
-		case 3:
-			std::wcout << "Brand: "     << velo_freeze_max.brand << std::endl;
-			std::wcout << "Label: "     << velo_freeze_max.label << std::endl;
-			std::wcout << "Price: "     << velo_freeze_max.price << std::endl;
-			std::wcout << "Strength: "  << velo_freeze_max.strength << std::endl;
-			break;
-		case 4:
-			std::wcout << "Brand: "     << zonex_cold_blast.brand << std::endl;
-			std::wcout << "Label: "     << zonex_cold_blast.label << std::endl;
-			std::wcout << "Price: "     << zonex_cold_blast.price << std::endl;
-			std::wcout << "Strength: "  << zonex_cold_blast.strength << std::endl;
-			break;
-		case 5:
-			std::wcout << "Brand: "     << greatest_cold_dry.brand << std::endl;
-			std::wcout << "Label: "     << greatest_cold_dry.label << std::endl;
-			std::wcout << "Price: "     << greatest_cold_dry.price << std::endl;
-			std::wcout << "Strength: "  << greatest_cold_dry.strength << std::endl;
-			break;
-		case 6:
-			std::wcout << "Brand: "     << lundgrens_rimfrost.brand << std::endl;
-			std::wcout << "Label: "     << lundgrens_rimfrost.label << std::endl;
-			std::wcout << "Price: "     << lundgrens_rimfrost.price << std::endl;
-			std::wcout << "Strength: "  << lundgrens_rimfrost.strength << std::endl;
-			break;
-		default:
-			break;
-	}
 
 	return 0;
 }
