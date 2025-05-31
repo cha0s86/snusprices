@@ -1,20 +1,13 @@
 #include <algorithm>
 #include <iostream>
+#include <codecvt>
 #include <fstream>
 #include <sstream>
-#include <codecvt>
 #include <vector>
 #include <string>
+#include <limits>
 #include <locale>
-#include "snus.h"
-
-struct SnusItem {
-	int id;
-	std::string merkki;
-	std::string malli;
-	std::string vahvuus;
-	std::string hinta;
-};
+#include <map>
 
 // Function to trim leading and trailing whitespace from a string
 std::string trim(const std::string& str) {
@@ -52,126 +45,293 @@ std::wstring toLower(const std::wstring& str) {
     return lowerStr;
 }
 
-// Function to search for products by name
-void searchByName(const std::vector<SnusItem> &database, std::string &merkki, bool singleLine) {
+// Structure to represent a product in the Alko database
+struct SnusItem {
+    int id; // Product ID
+    std::wstring merkki; // Product name
+    std::wstring malli; // Manufacturer
+    std::wstring vahvuus; // Bottle size
+    std::wstring hinta; // Price
+};
+
+void loadDatabase(const std::string filename, std::vector<SnusItem> &database); // Forward declaration of loadDatabase function
+
+// Funtion to load the database from a CSV file
+void loadDatabase(const std::string filename, std::vector<SnusItem> &database) {
+    std::wfstream file(filename);
     
+    file.imbue(std::locale(file.getloc(), new std::codecvt_utf8<wchar_t>));
+    
+    if (!file.is_open()) {
+        std::wcerr << L"Error: Could not open file " << utf8_to_wstring(filename) << std::endl;
+        return;
+    }
+    
+    std::wstring line;
+
+    std::getline(file, line); // Read the header line (first line)
+    
+    while (std::getline(file, line)) {
+        std::wstringstream ss(line);
+        SnusItem item;
+        std::wstring token;
+
+        std::getline(ss, token, L',');
+        item.id = std::stoi(token);
+        std::getline(ss, token, L',');
+        item.merkki = token;
+        std::getline(ss, token, L',');
+        item.malli = token;
+        std::getline(ss, token, L',');
+        item.vahvuus = token;
+        std::getline(ss, token, L',');
+        item.hinta = token;
+        database.push_back(item);
+    }
+    file.close();
+}
+
+// Function to print a separator line
+void printSeparator() {
+    std::wcout << L"------------------------------------------------------" << std::endl;
+}
+
+std::map<std::wstring, std::wstring> strings;
+// Function to set the strings for the selected language
+void setLanguageStrings(const std::wstring& language) {
+    if (language == L"fi") {
+        strings[L"PRODUCT_ID"] = L"Tuotteen ID: ";
+        strings[L"PRODUCT_BRAND"] = L"Tuotemerkki: ";
+        strings[L"PRODUCT_LABEL"] = L"Malli: ";
+	strings[L"PRODUCT_STRENGTH"] = L"Vahvuus: ";
+        strings[L"PRICE"] = L"Hinta: ";
+        strings[L"MENU_HEADER"] = L"Valitse toiminto:";
+        strings[L"MENU_OPTION_1"] = L"1. Hae tuotteita merkin perusteella";
+        strings[L"MENU_OPTION_2"] = L"2. Poistu";
+        strings[L"MENU_PROMPT"] = L"Anna valintasi (1-2): ";
+        strings[L"DETAIL_PROMPT"] = L"Haluatko tuotetiedot tulostettuna jokainen omalla rivillä, vai tuoteblockeina?\n tuoteblockit ovat helposti luettavampia, mutta saattavat tukkia terminaalia, jos tuotteita on liikaa.\nValitse vaihtoehto:";
+        strings[L"DETAIL_OPTION_1"] = L"1. Tuoteblockit";
+        strings[L"DETAIL_OPTION_2"] = L"2. Tuotetiedot yhdellä rivillä";
+        strings[L"DETAIL_PROMPT_INPUT"] = L"Anna valintasi (1-2): ";
+        strings[L"INVALID_CHOICE"] = L"Virheellinen valinta. Yritä uudelleen.";
+        strings[L"DEFAULTING_TO_NICELY"] = L"Virheellinen valinta. Oletuksena tulostetaan siististi.";
+        strings[L"ENTER_PRODUCT_NAME"] = L"Anna haettavan tuotteen nimi: ";
+        strings[L"SEARCHING"] = L"Haetaan tuotteita nimellä: ";
+        strings[L"ERROR_NO_ITEMS"] = L"Virhe: Tietokannasta ei löytynyt tuotteita.";
+        strings[L"DATABASE_LOADED"] = L"Tietokanta ladattu. ";
+        strings[L"ITEMS_FOUND"] = L" tuotetta löydetty.";
+        strings[L"WELCOME"] = L"Tervetuloa SnusPrices hakuohjelmaan!";
+        strings[L"COPYRIGHT"] = L"Tekijänoikeus (c) 2025 Pekka Kukonlehto";
+        strings[L"AUTHOR"] = L"Tekijä: Pekka Kukonlehto";
+        strings[L"VERSION"] = L"Versio: v1.2";
+        strings[L"DATE"] = L"Päivämäärä: 2025";
+        strings[L"UNSUPPORTED_LANGUAGE"] = L"Virhe: Valittu kieli ei ole tuettu.";
+        strings[L"SEPARATOR"] = L"------------------------------------------------------";
+        strings[L"CATEGORY_NUMBER_PROMPT"] = L"Syötä kategorian numero: ";
+    } else if (language == L"en") {
+        strings[L"PRODUCT_ID"] = L"Product ID: ";
+        strings[L"PRODUCT_BRAND"] = L"Brand: ";
+        strings[L"PRODUCT_LABEL"] = L"Label: ";
+	strings[L"PRODUCT_STRENGTH"] = L"Strength: ";
+        strings[L"PRICE"] = L"Price: ";
+        strings[L"MENU_OPTION_1"] = L"1. Search products by name";
+        strings[L"MENU_OPTION_2"] = L"2. Exit";
+        strings[L"MENU_PROMPT"] = L"Enter your choice (1-2): ";
+        strings[L"DETAIL_PROMPT"] = L"Do you want the product details printed as blocks or on single lines?\nChoose an option:";
+        strings[L"DETAIL_OPTION_1"] = L"1. Product blocks";
+        strings[L"DETAIL_OPTION_2"] = L"2. Product details on single lines";
+        strings[L"DETAIL_PROMPT_INPUT"] = L"Enter your choice (1-2): ";
+        strings[L"INVALID_CHOICE"] = L"Invalid choice. Please try again.";
+        strings[L"DEFAULTING_TO_NICELY"] = L"Invalid choice. Defaulting to nicely printed.";
+        strings[L"ENTER_PRODUCT_NAME"] = L"Enter the product name to search: ";
+        strings[L"SEARCHING"] = L"Searching for products with name: ";
+        strings[L"ERROR_NO_ITEMS"] = L"Error: No items found in the database.";
+        strings[L"DATABASE_LOADED"] = L"Database loaded successfully. ";
+        strings[L"ITEMS_FOUND"] = L" items found.";
+        strings[L"WELCOME"] = L"Welcome to the SnusPrices Search Program!";
+        strings[L"COPYRIGHT"] = L"Copyright (c) 2025 Pekka Kukonlehto";
+        strings[L"AUTHOR"] = L"Author: Pekka Kukonlehto";
+        strings[L"VERSION"] = L"Version: v1.2";
+        strings[L"DATE"] = L"Date: 2025";
+        strings[L"UNSUPPORTED_LANGUAGE"] = L"Error: Unsupported language selected.";
+        strings[L"SEPARATOR"] = L"------------------------------------------------------";
+        strings[L"CATEGORY_NUMBER_PROMPT"] = L"Enter the category number: ";
+    } else {
+        std::wcerr << strings[L"UNSUPPORTED_LANGUAGE"] << std::endl;
+        return;
+    }
+}
+
+// Function to search for products by name
+void searchByName(const std::vector<SnusItem> &database, const std::wstring &name, bool singleLine) {
+    std::wcout << strings[L"SEARCHING"] << name << std::endl;
+    printSeparator();
     bool found = false;
 
     for (const auto& item : database) {
-        if (toLower(item.merkki).find(toLower(merkki)) != std::wstring::npos) {
+        if (toLower(item.merkki).find(toLower(name)) != std::wstring::npos) {
             found = true;
             if (singleLine) {
-                std::cout << "ID:" << item.id
-                            << ", " << "Merkki: " << item.merkki
-                            << ", " << "Malli: " << item.malli
-                            << ", " << "Vahvuus: " << item.vahvuus
-                            << ", " << "Hinta: " << item.hinta;
+                std::wcout << strings[L"PRODUCT_ID"] << item.id
+                            << L", " << strings[L"PRODUCT_BRAND"] << item.merkki
+                            << L", " << strings[L"PRODUCT_LABEL"] << item.malli
+                            << L", " << strings[L"PRODUCT_STRENGTH"] << item.vahvuus
+                            << L", " << strings[L"PRICE"] << item.hinta << std::endl;
             } else {
-                if (item.id) std::cout << "ID: " << item.id << std::endl;
-                if (!item.merkki.empty()) std::cout << "Merkki: " << item.merkki << std::endl;
-                if (!item.malli.empty()) std::cout << "Malli: " << item.malli << std::endl;
-                if (!item.vahvuus.empty()) std::cout << "Vahvuus: " << item.vahvuus << std::endl;
-                if (!item.hinta.empty()) std::cout << "Hinta: " << item.hinta << std::endl;
-                std::cout << std::endl;
+                if (item.id) std::wcout << strings[L"PRODUCT_ID"] << item.id << std::endl;
+                if (!item.merkki.empty()) std::wcout << strings[L"PRODUCT_BRAND"] << item.merkki << std::endl;
+                if (!item.malli.empty()) std::wcout << strings[L"PRODUCT_LABEL"] << item.malli << std::endl;
+                if (!item.vahvuus.empty()) std::wcout << strings[L"PRODUCT_STRENGTH"] << item.vahvuus << std::endl;
+                if (!item.hinta.empty()) std::wcout << strings[L"PRICE"] << item.hinta << std::endl;
+                std::wcout << std::endl;
             }
         }
     }
 
     if (!found) {
-        std::cout << L"No products found with the name: " << merkki << std::endl;
+        std::wcout << L"No products found with the name: " << name << std::endl;
     }
 }
 
-void loadDatabase(std::string filename, std::vector<SnusItem> database) {
+// Function to print the program header
+void printHeader() {
+    printSeparator();
+    std::wcout << strings[L"WELCOME"] << std::endl;
+    printSeparator();
+    std::wcout << strings[L"COPYRIGHT"] << std::endl;
+    std::wcout << strings[L"AUTHOR"] << std::endl;
+    std::wcout << strings[L"VERSION"] << std::endl;
+    std::wcout << strings[L"DATE"] << std::endl;
+    printSeparator();
+}
 
-	std::cout << "Loading database: " << filename << std::endl;
-	
-	std::fstream file(filename.c_str());
+// Function to display the main menu
+void displayMenu() {
+    std::wcout << strings[L"MENU_HEADER"] << std::endl;
+    std::wcout << strings[L"MENU_OPTION_1"] << std::endl;
+    std::wcout << strings[L"MENU_OPTION_2"] << std::endl;
+    std::wcout << strings[L"MENU_PROMPT"];
+}
 
-	file.imbue(std::locale(file.getloc(), new std::codecvt_utf8<wchar_t>));
+// Function to get the user's choice for detail level
+bool getDetailChoice() {
+    std::wcout << strings[L"DETAIL_PROMPT"] << std::endl;
+    std::wcout << strings[L"DETAIL_OPTION_1"] << std::endl;
+    std::wcout << strings[L"DETAIL_OPTION_2"] << std::endl;
+    std::wcout << strings[L"DETAIL_PROMPT_INPUT"];
 
-	if (!file.is_open()) {
-		std::cerr << "Error: Could not open file: " << filename << std::endl;
-	}
+    int detailChoice;
+    std::wcin >> detailChoice;
+    std::wcin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-	std::string line;
-	std::getline(file, line); // Read the header line (first line);
-	while (std::getline(file, line)) {
-		std::stringstream ss(line);
-		SnusItem item;
-		std::string token;
-
-		std::getline(ss, token, ',');
-		item.id = std::stoi(token);
-		std::getline(ss, token, ',');
-		item.merkki = token;
-		std::getline(ss, token, ',');
-		item.malli = token;
-		std::getline(ss, token, ',');
-		item.vahvuus = token;
-		std::getline(ss, token, ',');
-		item.hinta = token;
-		
-		database.push_back(item);
-	}
-	file.close();
+    if (detailChoice == 1) {
+        return false; // Printed nicely
+    } else if (detailChoice == 2) {
+        return true; // Single line
+    } else {
+        std::wcout << strings[L"DEFAULTING_TO_NICELY"] << std::endl;
+        return false; // Default to printed nicely
+    }
 }
 
 int main() {
 
-	std::vector<SnusItem> database;
-	
-	// Set the locale to support UTF-8 (Windows-specific)
-    	#ifdef _WIN32
-    	std::setlocale(LC_ALL, "");
-    	system("chcp 65001 > nul");
-    	#endif
+    // Set the locale to support UTF-8 (Windows-specific)
+    #ifdef _WIN32
+    std::setlocale(LC_ALL, "");
+    system("chcp 65001 > nul");
+    #endif
 
-    	// Set UTF-8 locale for C++ streams (Linux-specific)
-    	#ifdef __linux__
-    	std::setlocale(LC_ALL, "");
-    	#endif
+    // Set UTF-8 locale for C++ streams (Linux-specific)
+    #ifdef __linux__
+    std::setlocale(LC_ALL, "");
+    #endif
 
-	std::cout << "Enter snus database: ";
-	std::string dbname;
-	std::cin >> dbname;
+    // Prompt the user for language choice
+    std::wcout << L"Select language (1: Finnish, 2: English): ";
+    int languageChoice;
+    std::wcin >> languageChoice;
+    std::wcin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    std::wstring language = (languageChoice == 2) ? L"en" : L"fi";
+    setLanguageStrings(language);
+    
+    // Print the program header
+    printHeader();
 
-	// While searching
-	// Print all databases (e.g kmarket.csv, sale.csv, prisma.csv)
-	// Comment: for now just do one, load "snus.csv"...
+    // Load the database from the CSV file
+    std::vector<SnusItem> database;
 
-	loadDatabase(dbname, database);
 
-	std::cout << "Database loaded successfully..." << std::endl;
+    std::wcout << "Please select your market..." << std::endl;
+    std::wcout << "1. K-Market" << std::endl;
+    std::wcout << "2. Sale" << std::endl;
+    std::wcout << "3. Shell" << std::endl;
+    std::wcout << "4. Prisma" << std::endl;
 
-	std::cout << "Welcome to nicotine pouch prices app!" << std::endl;
-	
-	bool searching = true;
+    std::wcout << "Please select the market: ";
 
-	while (searching) {
-		std::string searchterm;
-		std::cout << "Please enter the product name or leave empty to list all products: ";
-		std::cin >> searchterm;
+    int market = 0; 
 
-		bool singleLine;
+    std::wcin >> market;
+    std::wcin.ignore();
 
-		searchByName(database, searchterm, singleLine);
+    if (market == 1) {
+	loadDatabase("kmarket.csv", database);
+    } else if (market == 2) {
+	loadDatabase("sale.csv", database);
+    } else if (market == 3) {
+	loadDatabase("shell.csv", database);
+    } else if (market == 4) {
+    	loadDatabase("prisma.csv", database);
+    } else {
+	std::cerr << "Invalid input, exiting..." << std::endl;
+    }
 
-		std::cout << "--- 1. Search again / 2. Exit ---" << std::endl;
-		std::cout << "Do you want to search again or exit?: ";
-		
-		int choice;
-		std::cin >> choice;
+    if (database.empty()) {
+        std::wcerr << strings[L"ERROR_NO_ITEMS"] << std::endl;
+        return 1;
+    }
 
-		if (choice == 1) {
-			// Do nothing
-		} else if (choice == 2) {
-			searching = false;
-		} else {
-			std::cout << "Invalid input" << std::endl;
-		}
-	}
-	
+    // Check if the database is empty
+    if (database.empty()) {
+        std::wcerr << strings[L"ERROR_NO_ITEMS"] << std::endl;
+        return 1;
+    }
 
-	return 0;
+    // Print the number of items loaded
+    std::wcout << strings[L"DATABASE_LOADED"] << database.size() << strings[L"ITEMS_FOUND"] << std::endl;
+    printSeparator();
+    
+    // Main program loop
+    bool searching = true;
+
+    while (searching) {
+        // Display menu options
+        displayMenu();
+
+        // Get the user's choice
+        int choice;
+        std::wcin >> choice;
+        std::wcin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        printSeparator();
+
+        switch (choice) {
+            case 1: { // Search by name
+                std::wstring productName;
+                std::wcout << strings[L"ENTER_PRODUCT_NAME"];
+                std::getline(std::wcin, productName);
+                bool singleLine = getDetailChoice();
+                searchByName(database, productName, singleLine);
+                break;
+            }
+            case 2: { // Exit
+                searching = false;
+                break;
+            }
+            default:
+                std::wcout << strings[L"INVALID_CHOICE"] << std::endl;
+        }
+    }
+
+    return 0;
 }
