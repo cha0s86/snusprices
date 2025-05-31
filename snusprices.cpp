@@ -109,7 +109,7 @@ void setLanguageStrings(const std::wstring& language) {
         strings[L"MENU_OPTION_1"] = L"1. Hae tuotteita merkin perusteella";
         strings[L"MENU_OPTION_2"] = L"2. Poistu";
         strings[L"MENU_PROMPT"] = L"Anna valintasi (1-2): ";
-        strings[L"DETAIL_PROMPT"] = L"Haluatko tuotetiedot tulostettuna jokainen omalla rivillä, vai tuoteblockeina?\n tuoteblockit ovat helposti luettavampia, mutta saattavat tukkia terminaalia, jos tuotteita on liikaa.\nValitse vaihtoehto:";
+        strings[L"DETAIL_PROMPT"] = L"Haluatko tuotetiedot tulostettuna jokainen omalla rivillä, vai tuoteblockeina?\nValitse vaihtoehto:";
         strings[L"DETAIL_OPTION_1"] = L"1. Tuoteblockit";
         strings[L"DETAIL_OPTION_2"] = L"2. Tuotetiedot yhdellä rivillä";
         strings[L"DETAIL_PROMPT_INPUT"] = L"Anna valintasi (1-2): ";
